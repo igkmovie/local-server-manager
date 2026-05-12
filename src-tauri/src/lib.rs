@@ -159,6 +159,65 @@ fn get_server_log(server_id: String, lines: Option<usize>) -> Result<String, Str
 }
 
 #[tauri::command]
+fn force_stop_external(state: State<'_, AppState>, server_id: String) -> Result<u32, String> {
+    let cfg = load_config_into(&state)?;
+    let server = find_server(&cfg, &server_id)?;
+    let port = server
+        .port
+        .ok_or_else(|| format!("'{}' has no port configured", server_id))?;
+    let pid = port_checker::find_pid_on_port(port).ok_or_else(|| {
+        format!(
+            "No process found listening on port {}.\nIt may have stopped already.",
+            port
+        )
+    })?;
+
+    state.logs.append(
+        &server_id,
+        "system",
+        &format!("Force-stopping external process PID {} on port {}", pid, port),
+    );
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let status = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status()
+            .map_err(|e| e.to_string())?;
+        if !status.success() {
+            let msg = format!(
+                "taskkill failed (code {:?}). The process may require Administrator privileges.",
+                status.code()
+            );
+            state.logs.append(&server_id, "system", &msg);
+            return Err(msg);
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        use std::process::Command;
+        let status = Command::new("kill")
+            .arg("-KILL")
+            .arg(pid.to_string())
+            .status()
+            .map_err(|e| e.to_string())?;
+        if !status.success() {
+            return Err(format!("kill failed with code {:?}", status.code()));
+        }
+    }
+
+    state
+        .logs
+        .append(&server_id, "system", &format!("Force-stopped PID {}", pid));
+    Ok(pid)
+}
+
+#[tauri::command]
 fn open_server_url(state: State<'_, AppState>, app: tauri::AppHandle, server_id: String) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     let cfg = load_config_into(&state)?;
@@ -219,6 +278,7 @@ pub fn run() {
             start_group,
             stop_group,
             get_server_log,
+            force_stop_external,
             open_server_url,
             reveal_log_file,
             get_config_path,

@@ -77,6 +77,26 @@ export function ServerDetail({ server, onChanged }: Props) {
         >
           Stop
         </Action>
+        {server.status === "external" && (
+          <Action
+            color="red"
+            disabled={!!busy}
+            loading={busy === "forceStop"}
+            onClick={() => {
+              const ok = window.confirm(
+                `This will kill the external process listening on port ${server.port}.\n\nWarning: if the process is writing data (DB, file I/O), force-killing may cause corruption.\n\nContinue?`,
+              );
+              if (!ok) return;
+              run("forceStop", () =>
+                invoke<number>("force_stop_external", {
+                  serverId: server.id,
+                }),
+              );
+            }}
+          >
+            Force Stop (external)
+          </Action>
+        )}
         <Action
           color="blue"
           disabled={!!busy}
