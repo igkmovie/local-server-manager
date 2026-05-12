@@ -159,6 +159,35 @@ fn get_server_log(server_id: String, lines: Option<usize>) -> Result<String, Str
 }
 
 #[tauri::command]
+fn open_server_url(state: State<'_, AppState>, app: tauri::AppHandle, server_id: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let cfg = load_config_into(&state)?;
+    let server = find_server(&cfg, &server_id)?;
+    let url = server
+        .open_url
+        .or_else(|| server.health_url.clone())
+        .ok_or_else(|| format!("'{}' has no openUrl configured", server_id))?;
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn reveal_log_file(app: tauri::AppHandle, server_id: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    config::ensure_dirs()?;
+    let log_path = config::logs_dir()?.join(format!("{}.log", server_id));
+    let target = if log_path.exists() {
+        log_path
+    } else {
+        config::logs_dir()?
+    };
+    app.opener()
+        .reveal_item_in_dir(&target)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_config_path() -> Result<String, String> {
     Ok(config::config_path()?.to_string_lossy().to_string())
 }
@@ -190,6 +219,8 @@ pub fn run() {
             start_group,
             stop_group,
             get_server_log,
+            open_server_url,
+            reveal_log_file,
             get_config_path,
             reveal_config_file
         ])

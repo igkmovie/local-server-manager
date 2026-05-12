@@ -91,10 +91,27 @@ export function ServerDetail({ server, onChanged }: Props) {
         </Action>
         <Action
           color="neutral"
-          disabled
-          onClick={() => undefined}
+          disabled={!!busy || !server.openUrl}
+          loading={busy === "openUrl"}
+          onClick={() =>
+            run("openUrl", () =>
+              invoke<void>("open_server_url", { serverId: server.id }),
+            )
+          }
         >
           Open URL
+        </Action>
+        <Action
+          color="neutral"
+          disabled={!!busy}
+          loading={busy === "revealLog"}
+          onClick={() =>
+            run("revealLog", () =>
+              invoke<void>("reveal_log_file", { serverId: server.id }),
+            )
+          }
+        >
+          Reveal Log
         </Action>
       </div>
       {error && (

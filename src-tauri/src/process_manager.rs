@@ -109,7 +109,14 @@ pub fn start(state: &AppState, cfg: &ServerConfig) -> Result<u32, String> {
         .append(&cfg.id, "system", &format!("Starting: {} {:?}", cfg.command, cfg.args));
 
     let mut child = command.spawn().map_err(|e| {
-        let msg = format!("Failed to start '{}': {}", cfg.command, e);
+        let msg = if e.kind() == std::io::ErrorKind::NotFound {
+            format!(
+                "Command not found: {}\n\nPlease check your PATH or use an absolute path.",
+                cfg.command
+            )
+        } else {
+            format!("Failed to start '{}': {}", cfg.command, e)
+        };
         state.logs.append(&cfg.id, "system", &msg);
         msg
     })?;
