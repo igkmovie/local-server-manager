@@ -5,6 +5,7 @@ import { GroupList } from "./components/GroupList";
 import { ServerDetail } from "./components/ServerDetail";
 import { ConfigErrorBanner } from "./components/ConfigErrorBanner";
 import { LogViewer } from "./components/LogViewer";
+import { UpdateBanner } from "./components/UpdateBanner";
 import type { GroupView, ServerView } from "./types/server";
 import "./App.css";
 
@@ -68,6 +69,8 @@ function App() {
           </button>
         </div>
       </header>
+
+      <UpdateBanner />
 
       {configError && (
         <ConfigErrorBanner
