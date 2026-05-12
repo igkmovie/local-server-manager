@@ -1,5 +1,6 @@
 mod app_state;
 mod config;
+mod group_manager;
 mod health_checker;
 mod log_manager;
 mod models;
@@ -21,7 +22,7 @@ fn load_config_into(state: &AppState) -> Result<models::AppConfig, String> {
     Ok(cfg)
 }
 
-fn compute_status(state: &AppState, s: &ServerConfig) -> ServerStatus {
+pub fn compute_status(state: &AppState, s: &ServerConfig) -> ServerStatus {
     let managed = process_manager::is_running(state, &s.id);
     if managed {
         let port_ok = match s.port {
@@ -141,6 +142,18 @@ fn restart_server(state: State<'_, AppState>, server_id: String) -> Result<u32, 
 }
 
 #[tauri::command]
+fn start_group(state: State<'_, AppState>, group_id: String) -> Result<(), String> {
+    let cfg = load_config_into(&state)?;
+    group_manager::start_group(&state, &cfg, &group_id)
+}
+
+#[tauri::command]
+fn stop_group(state: State<'_, AppState>, group_id: String) -> Result<Vec<(String, String)>, String> {
+    let cfg = load_config_into(&state)?;
+    Ok(group_manager::stop_group(&state, &cfg, &group_id))
+}
+
+#[tauri::command]
 fn get_server_log(server_id: String, lines: Option<usize>) -> Result<String, String> {
     log_manager::read_tail(&server_id, lines.unwrap_or(500))
 }
@@ -174,6 +187,8 @@ pub fn run() {
             start_server,
             stop_server,
             restart_server,
+            start_group,
+            stop_group,
             get_server_log,
             get_config_path,
             reveal_config_file

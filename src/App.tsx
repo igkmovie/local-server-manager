@@ -93,7 +93,7 @@ function App() {
           <div className="mt-4 mb-2 text-xs uppercase tracking-wider text-neutral-400">
             Groups
           </div>
-          <GroupList groups={groups} />
+          <GroupList groups={groups} onChanged={load} />
         </aside>
 
         <main className="flex flex-1 flex-col overflow-hidden">
